@@ -191,7 +191,8 @@ def _download_media(url: str, is_audio: bool = False) -> str | None:
         })
     else:
         ydl_opts.update({
-            'format': 'bestvideo[height<=720]+bestaudio/best[height<=720]',
+            # ← ESTE ES EL FIX PRINCIPAL
+            'format': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720]/best',
             'merge_output_format': 'mp4',
         })
 
@@ -203,7 +204,6 @@ def _download_media(url: str, is_audio: bool = False) -> str | None:
             filename = ydl.prepare_filename(info)
         if os.path.exists(filename):
             return filename
-        # fallback
         for f in os.listdir(DOWNLOADS_DIR):
             if info.get('title', '').lower() in f.lower():
                 return os.path.join(DOWNLOADS_DIR, f)
