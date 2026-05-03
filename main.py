@@ -295,4 +295,4 @@ app.add_handler(CommandHandler("video", video_cmd))
 app.add_handler(CommandHandler("audio", audio_cmd))
 
 print("✅ Bot corriendo — acceso abierto a todos los usuarios")
-app.run_polling()
+app.run_polling(drop_pending_updates=True)
