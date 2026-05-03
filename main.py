@@ -15,11 +15,14 @@ IPINFO_KEY     = os.getenv("IPINFO_KEY")
 VIRUSTOTAL_KEY = os.getenv("VIRUSTOTAL_KEY")
 SHODAN_KEY     = os.getenv("SHODAN_KEY")
 # ────────────────────────────────────────────────────────
-
+MI_ID=6687308605
 groq_client = Groq(api_key=GROQ_API_KEY)
 CURRENT_MODEL = "llama-3.3-70b-versatile"
 
 # ====================== FUNCIONES DE RECOLECCIÓN ======================
+
+def solo_yo(update):
+    return update.effective_user.id == MI_ID
 
 async def get_ipapi(session, ip):
     try:
@@ -70,7 +73,7 @@ async def get_whois(session, ip):
     except:
         return {}
 
-# ====================== ANÁLISIS CON IA ======================
+# ====================== ANÁLISIS CON IA (más breve) ======================
 
 def analizar_con_ia(target, datos, es_url=False):
     tipo = "URL" if es_url else "IP"
@@ -109,6 +112,8 @@ def es_ip_valida(target):
 # ====================== COMANDO SCAN ======================
 
 async def scan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not solo_yo(update):
+        return 
     if not context.args:
         await update.message.reply_text("❌ Uso: `/scan <IP o URL>`\nEjemplo: `/scan 8.8.8.8`", parse_mode="Markdown")
         return
@@ -124,6 +129,7 @@ async def scan(update: Update, context: ContextTypes.DEFAULT_TYPE):
             datos = {"virustotal_url": vt_data, "tipo": "URL"}
             reporte_raw = f"🌐 *URL:* {target}\n\n🤖 Analizando con IA..."
         else:
+            # IP Scan (sin Shodan)
             resultados = await asyncio.gather(
                 get_ipapi(session, target),
                 get_ipinfo(session, target),
@@ -157,13 +163,12 @@ async def scan(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML"
     )
 
+    # Botones
     keyboard = [
         [InlineKeyboardButton("📄 Exportar TXT", callback_data=f"export_txt:{target}")]
     ]
     await update.message.reply_text("¿Qué deseas hacer?", reply_markup=InlineKeyboardMarkup(keyboard))
 
-
-# ====================== DESCARGA DE MEDIA ======================
 
 DOWNLOADS_DIR = "downloads"
 os.makedirs(DOWNLOADS_DIR, exist_ok=True)
@@ -186,6 +191,7 @@ def _download_media(url: str, is_audio: bool = False) -> str | None:
         })
     else:
         ydl_opts.update({
+            # ← ESTE ES EL FIX PRINCIPAL
             'format': 'bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=720]+bestaudio/best[height<=720]/best',
             'merge_output_format': 'mp4',
         })
@@ -207,6 +213,8 @@ def _download_media(url: str, is_audio: bool = False) -> str | None:
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    if query.from_user.id != MI_ID:
+        return
     await query.answer()
 
     if query.data.startswith("export_txt:"):
@@ -218,6 +226,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 async def video_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not solo_yo(update): return
     if not context.args:
         await update.message.reply_text("❌ Uso: `/video <URL>`", parse_mode="Markdown")
         return
@@ -235,6 +244,7 @@ async def video_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Error: {str(e)[:150]}")
 
 async def audio_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not solo_yo(update): return
     if not context.args:
         await update.message.reply_text("❌ Uso: `/audio <URL>`", parse_mode="Markdown")
         return
@@ -254,21 +264,26 @@ async def audio_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ====================== OTROS COMANDOS ======================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not solo_yo(update):
+        return
+    
     await update.message.reply_text(
-        "*🚀 Bot Multifunción*\n\n"
-        "Comandos:\n"
-        "/scan <IP o URL> — Análisis OSINT\n"
-        "/model <llama|mixtral> — Cambiar modelo IA\n"
-        "/video <URL> — Descargar video (720p)\n"
-        "/audio <URL> — Descargar audio (mp3)\n\n"
-        "Ej:\n"
-        "`/scan 8.8.8.8`\n"
-        "`/video https://...`\n"
-        "`/audio https://...`",
-        parse_mode="Markdown"
-    )
-
+    "*🚀 Bot Multifunción*\n\n"
+    "Comandos:\n"
+    "/scan <IP o URL> — Análisis OSINT\n"
+    "/model <llama|mixtral> — Cambiar modelo IA\n"
+    "/video <URL> — Descargar video (720p)\n"
+    "/audio <URL> — Descargar audio (mp3)\n\n"
+    "Ej:\n"
+    "`/scan 8.8.8.8`\n"
+    "`/video https://...`\n"
+    "`/audio https://...`",
+    parse_mode="Markdown"
+)
 async def set_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not solo_yo(update):
+        return
+    
     global CURRENT_MODEL
     if not context.args:
         await update.message.reply_text(f"Modelo actual: **{CURRENT_MODEL}**", parse_mode="Markdown")
@@ -278,7 +293,7 @@ async def set_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
         CURRENT_MODEL = "llama-3.3-70b-versatile"
     elif "mixtral" in m:
         CURRENT_MODEL = "mixtral-8x7b-32768"
-    else:
+    else:       
         await update.message.reply_text("Opciones: llama o mixtral")
         return
     await update.message.reply_text(f"✅ Modelo cambiado a **{CURRENT_MODEL}**")
@@ -294,5 +309,5 @@ app.add_handler(CallbackQueryHandler(button_handler))
 app.add_handler(CommandHandler("video", video_cmd))
 app.add_handler(CommandHandler("audio", audio_cmd))
 
-print("✅ Bot corriendo — acceso abierto a todos los usuarios")
-app.run_polling(drop_pending_updates=True)
+print("✅ Bot OSINT corriendo (sin Shodan - más estable)")
+app.run_polling()
