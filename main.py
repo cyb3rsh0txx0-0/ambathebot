@@ -15,14 +15,14 @@ IPINFO_KEY     = os.getenv("IPINFO_KEY")
 VIRUSTOTAL_KEY = os.getenv("VIRUSTOTAL_KEY")
 SHODAN_KEY     = os.getenv("SHODAN_KEY")
 # ────────────────────────────────────────────────────────
-MI_ID=6687308605
+MI_ID = {6687308605,6958181174}
 groq_client = Groq(api_key=GROQ_API_KEY)
 CURRENT_MODEL = "llama-3.3-70b-versatile"
 
 # ====================== FUNCIONES DE RECOLECCIÓN ======================
 
 def solo_yo(update):
-    return update.effective_user.id == MI_ID
+    return update.effective_user.id in MI_ID
 
 async def get_ipapi(session, ip):
     try:
